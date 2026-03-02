@@ -1,0 +1,14 @@
+# Ignorera det körbara programmet
+c_plus_minus
+c_plus_minus.exe
+
+# Ignorera genererade filer (så vi bygger om dem varje gång)
+lex.yy.c
+parser.tab.cc
+parser.tab.hh
+location.hh
+position.hh
+stack.hh
+
+# Ignorera objektfiler
+*.o
