@@ -23,12 +23,12 @@ enum errCodes
 int errCode = errCodes::SUCCESS;
 
 // Handling Syntax Errors
-void yy::parser::error(std::string const &err)
+void yy::parser::error(const yy::parser::location_type &loc, const std::string &err)
 {
 	if (!lexical_errors)
 	{
 		std::cerr << "Syntax errors found! See the logs below:" << std::endl;
-		std::cerr << "\t@error at line " << yylineno << ". Cannot generate a syntax for this input:" << err.c_str() << std::endl;
+		std::cerr << "\t@error at line " << loc.begin.line << ". Cannot generate a syntax for this input:" << err.c_str() << std::endl;
 		std::cerr << "End of syntax errors!" << std::endl;
 		errCode = errCodes::SYNTAX_ERROR;
 	}

@@ -13,14 +13,13 @@ class A {
 
     num_aux[3] := num.length //@error - semantic (member .length is used incorrectly)
 
-    return this //@error - semantic (invalid use of 'this' in C+-)
-  }
+    return this} //@error - semantic (invalid use of 'this' in C+-)
 
   a2(): int {
     a: int
     a[0] := 2 //@error - semantic (trying to use int as int array)
     return a
-  }
+    }
 
 }
 

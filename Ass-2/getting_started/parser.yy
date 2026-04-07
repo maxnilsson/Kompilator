@@ -1,5 +1,6 @@
 %skeleton "lalr1.cc"
 %defines
+%locations
 %define parse.error verbose
 %define api.value.type variant
 %define api.token.constructor
@@ -93,7 +94,7 @@ class_list:
 
 class_decl:
     CLASS ID LBRACE class_body RBRACE {
-        $$ = new Node("Class", $2, yylineno);
+    $$ = new Node("Class", $2, @2.begin.line);
         if ($4) {
             for (auto child : $4->children)
                 $$->children.push_back(child);
@@ -122,15 +123,15 @@ class_body:
 
 entry:
     MAIN LP RP COLON INT_TYPE stmt_block {
-        $$ = new Node("Main", "", yylineno);
-        $$->children.push_back(new Node("Type", "int", yylineno));
+    $$ = new Node("Main", "", @1.begin.line);
+    $$->children.push_back(new Node("Type", "int", @5.begin.line));
         $$->children.push_back($6);
     }
 ;
 
 method_decl:
     ID LP param_list_opt RP COLON type stmt_block {
-        $$ = new Node("Method", $1, yylineno);
+    $$ = new Node("Method", $1, @1.begin.line);
         if ($3) $$->children.push_back($3);
         $$->children.push_back($6);
         $$->children.push_back($7);
@@ -144,14 +145,14 @@ param_list_opt:
 
 param_list:
     ID COLON type {
-        $$ = new Node("Params", "", yylineno);
-        Node* parameter = new Node("Param", $1, yylineno);
+    $$ = new Node("Params", "", @1.begin.line);
+    Node* parameter = new Node("Param", $1, @1.begin.line);
         parameter->children.push_back($3);
         $$->children.push_back(parameter);
     }
   | param_list COMMA ID COLON type {
         $$ = $1;
-        Node* parameter = new Node("Param", $3, yylineno);
+    Node* parameter = new Node("Param", $3, @3.begin.line);
         parameter->children.push_back($5);
         $$->children.push_back(parameter);
     }
@@ -264,20 +265,20 @@ for_update_opt:
 
 var:
     ID COLON type {
-        $$ = new Node("VarDecl", $1, yylineno);
+    $$ = new Node("VarDecl", $1, @1.begin.line);
         $$->children.push_back($3);
     }
   | ID COLON type ASSIGN expr {
-        $$ = new Node("VarDeclInit", $1, yylineno);
+    $$ = new Node("VarDeclInit", $1, @1.begin.line);
         $$->children.push_back($3);
         $$->children.push_back($5);
     }
   | VOLATILE ID COLON type {
-        $$ = new Node("VolatileVarDecl", $2, yylineno);
+    $$ = new Node("VolatileVarDecl", $2, @2.begin.line);
         $$->children.push_back($4);
     }
   | VOLATILE ID COLON type ASSIGN expr {
-        $$ = new Node("VolatileVarDeclInit", $2, yylineno);
+    $$ = new Node("VolatileVarDeclInit", $2, @2.begin.line);
         $$->children.push_back($4);
         $$->children.push_back($6);
     }
@@ -290,17 +291,17 @@ var:
 type:
     base_type { $$ = $1; }
   | base_type LBRACKET RBRACKET {
-        $$ = new Node("ArrayType", "", yylineno);
+        $$ = new Node("ArrayType", "", @1.begin.line);
         $$->children.push_back($1);
     }
-  | ID { $$ = new Node("Type", $1, yylineno); }
-  | VOID_TYPE { $$ = new Node("Type", "void", yylineno); }
+  | ID { $$ = new Node("Type", $1, @1.begin.line); }
+  | VOID_TYPE { $$ = new Node("Type", "void", @1.begin.line); }
 ;
 
 base_type:
-    INT_TYPE { $$ = new Node("Type", "int", yylineno); }
-  | FLOAT_TYPE { $$ = new Node("Type", "float", yylineno); }
-  | BOOL_TYPE { $$ = new Node("Type", "boolean", yylineno); }
+    INT_TYPE { $$ = new Node("Type", "int", @1.begin.line); }
+  | FLOAT_TYPE { $$ = new Node("Type", "float", @1.begin.line); }
+  | BOOL_TYPE { $$ = new Node("Type", "boolean", @1.begin.line); }
 ;
 
 /* ------------------------------------------------------------------ */
