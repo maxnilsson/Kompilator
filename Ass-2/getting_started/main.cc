@@ -64,7 +64,7 @@ int main(int argc, char **argv)
 			printf("\nPrint Tree:  \n");
 			try
 			{
-				root->print_tree();
+				// root->print_tree();
 				root->generate_tree();
 
 				// ── Build Symbol Table ──────────────────────────
