@@ -11,33 +11,24 @@
 
 using namespace std;
 
-// ═══════════════════════════════════════════════════════════════════════
-//  Enumerations
-// ═══════════════════════════════════════════════════════════════════════
-
-/** The four-level scope hierarchy: Program → Class → Method → Block */
 enum class ScopeType {
-    PROGRAM,   // Top-level (global variables + class declarations + main)
-    CLASS,     // Inside a class body
-    METHOD,    // Inside a method (or main) body
-    BLOCK      // Nested block (if/for/standalone { })
+    PROGRAM,   //global variable and class
+    CLASS, 
+    METHOD,
+    BLOCK   // if, for 
 };
 
-/** Distinguishes the three kinds of symbol table records. */
 enum class RecordType {
     CLASS,
     METHOD,
     VARIABLE
 };
 
-/** Sub-classification for variables. */
 enum class VariableKind {
-    FIELD,      // Class field
+    FIELD,      // Class
     PARAMETER,  // Method parameter
-    LOCAL       // Local variable (in method or block)
+    LOCAL       // variable
 };
-
-// ─── Enum → String helpers ───────────────────────────────────────────
 
 inline string scopeTypeToString(ScopeType st) {
     switch (st) {
@@ -67,20 +58,7 @@ inline string variableKindToString(VariableKind vk) {
     return "Unknown";
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-//  Records  –  one concrete struct per identifier category
-// ═══════════════════════════════════════════════════════════════════════
 
-/**
- * Base record stored in every scope's symbol map.
- *
- *   name   – the identifier text
- *   type   – semantic meaning depends on subclass:
- *              ClassRecord    → class name (same as `name`)
- *              MethodRecord   → return type ("int", "void", …)
- *              VariableRecord → declared type ("int", "float", "int[]", …)
- *   lineno – source line where the identifier was declared
- */
 struct Record {
     string     name;
     string     type;
@@ -94,9 +72,6 @@ struct Record {
     virtual string toString() const;
 };
 
-// ─────────────────────────────────────────────────────────────────────
-
-/** Record for a class declaration. */
 struct ClassRecord : public Record {
     ClassRecord(const string& className, int line)
         : Record(className, className, line, RecordType::CLASS) {}
@@ -104,36 +79,19 @@ struct ClassRecord : public Record {
     string toString() const override;
 };
 
-// ─────────────────────────────────────────────────────────────────────
 
-/**
- * Record for a method (or `main`) declaration.
- *
- *   type (inherited)  – the return type
- *   parameters        – ordered list of (name, type) pairs
- */
 struct MethodRecord : public Record {
-    vector<pair<string, string>> parameters;   // (paramName, paramType)
+    vector<pair<string, string>> parameters; 
 
     MethodRecord(const string& methodName, const string& returnType, int line)
         : Record(methodName, returnType, line, RecordType::METHOD) {}
 
-    /** Register a formal parameter.  Returns false if a duplicate name. */
     bool addParameter(const string& pName, const string& pType);
 
     string toString() const override;
 };
 
-// ─────────────────────────────────────────────────────────────────────
 
-/**
- * Record for a variable (field, parameter or local).
- *
- *   type (inherited) – declared type (e.g. "int", "boolean", "MyClass", "int[]")
- *   varKind          – FIELD / PARAMETER / LOCAL
- *   isVolatile       – declared with the `volatile` keyword
- *   isArray          – true when the type is an array (e.g. "int[]")
- */
 struct VariableRecord : public Record {
     VariableKind varKind;
     bool         isVolatile;
@@ -147,15 +105,12 @@ struct VariableRecord : public Record {
     string toString() const override;
 };
 
-// ═══════════════════════════════════════════════════════════════════════
-//  Scope  –  one node in the scope tree
-// ═══════════════════════════════════════════════════════════════════════
 
 class Scope {
 public:
-    string           name;       // human-readable label (class name, method name, …)
+    string           name;  
     ScopeType        scopeType;
-    int              level;      // nesting depth (0 = PROGRAM)
+    int              level;      
     Scope*           parent;
     vector<Scope*>   children;
     map<string, Record*> symbols;
@@ -165,26 +120,17 @@ public:
 
     ~Scope();
 
-    /** Insert a record.  Returns true on success, false if the name already exists. */
     bool insert(Record* record);
-
-    /** Look up an identifier in *this scope only*. */
     Record* lookupLocal(const string& id) const;
-
-    /** Look up an identifier walking up through ancestor scopes. */
+    // identifier
     Record* lookup(const string& id) const;
 };
 
-// ═══════════════════════════════════════════════════════════════════════
-//  SymbolTable  –  the public API used by the semantic-analysis pass
-// ═══════════════════════════════════════════════════════════════════════
-
 class SymbolTable {
 private:
-    Scope* root;           // The PROGRAM scope (always exists)
-    Scope* current;        // The scope we are currently inside
+    Scope* root;          
+    Scope* current; 
 
-    // Internal helpers for visualisation
     void printScope(const Scope* scope, int indent) const;
     void generateDotContent(const Scope* scope, int& nodeId, ostream& out) const;
 
@@ -192,55 +138,33 @@ public:
     SymbolTable();
     ~SymbolTable();
 
-    // ── Scope management ─────────────────────────────────────────────
-
-    /** Create a new child scope under the current scope and enter it. */
+    // creates child
     void enterScope(const string& name, ScopeType type);
-
-    /** Leave the current scope (move up to the parent).
-     *  Does nothing if already at the PROGRAM scope. */
     void leaveScope();
 
-    // ── Symbol operations ────────────────────────────────────────────
-
-    /** Insert a record into the *current* scope.
-     *  Returns true on success, false on duplicate. */
     bool insert(Record* record);
 
-    /** Look up an identifier starting from the current scope upward. */
     Record* lookup(const string& name) const;
 
-    /** Look up an identifier in the current scope only (no parent walk). */
+    // identifier
     Record* lookupLocal(const string& name) const;
-
-    // ── Accessors ────────────────────────────────────────────────────
 
     Scope*    getCurrentScope() const { return current; }
     Scope*    getRootScope()    const { return root;    }
     ScopeType getCurrentScopeType() const { return current->scopeType; }
 
-    /** Set current scope directly (used by semantic-analysis pass). */
     void setCurrentScope(Scope* s) { current = s; }
-
-    /** Reset the traversal pointer back to root. */
     void resetToRoot() { current = root; }
 
-    /** Find the class scope that is a child of root with the given name. */
+    // Find class scope 
     Scope* lookupClassScope(const string& className) const;
 
-    /** Walk up from current scope to find the enclosing CLASS scope. */
+    // From current scope to scope.
     Scope* getEnclosingClassScope() const;
-
-    /** Walk up from current scope to find the enclosing METHOD scope. */
     Scope* getEnclosingMethodScope() const;
 
-    // ── Visualisation ────────────────────────────────────────────────
-
-    /** Pretty-print the whole symbol table to stdout. */
     void printTable() const;
-
-    /** Write a Graphviz DOT file representing the scope tree. */
     void generateDot(const string& filename = "symboltable.dot") const;
 };
 
-#endif // SYMBOLTABLE_H
+#endif 

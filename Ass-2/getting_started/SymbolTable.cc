@@ -1,27 +1,16 @@
 #include "SymbolTable.h"
 
-// ═══════════════════════════════════════════════════════════════════════
-//  Record::toString  (base – should not normally be called directly)
-// ═══════════════════════════════════════════════════════════════════════
-
 string Record::toString() const {
     return "[Record] " + name + " : " + type + " (line " + to_string(lineno) + ")";
 }
-
-// ═══════════════════════════════════════════════════════════════════════
-//  ClassRecord
-// ═══════════════════════════════════════════════════════════════════════
 
 string ClassRecord::toString() const {
     return "[Class] " + name + " (line " + to_string(lineno) + ")";
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-//  MethodRecord
-// ═══════════════════════════════════════════════════════════════════════
 
 bool MethodRecord::addParameter(const string& pName, const string& pType) {
-    // Check for duplicate parameter name
+    // duplicate parameter
     for (const auto& p : parameters) {
         if (p.first == pName)
             return false;
@@ -41,10 +30,6 @@ string MethodRecord::toString() const {
     return oss.str();
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-//  VariableRecord
-// ═══════════════════════════════════════════════════════════════════════
-
 string VariableRecord::toString() const {
     ostringstream oss;
     oss << "[Variable/" << variableKindToString(varKind) << "] "
@@ -54,23 +39,18 @@ string VariableRecord::toString() const {
     return oss.str();
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-//  Scope
-// ═══════════════════════════════════════════════════════════════════════
-
 Scope::~Scope() {
-    // Recursively delete child scopes
+
     for (Scope* child : children)
         delete child;
 
-    // Delete all records owned by this scope
     for (auto& pair : symbols)
         delete pair.second;
 }
 
 bool Scope::insert(Record* record) {
     if (symbols.find(record->name) != symbols.end())
-        return false;   // duplicate
+        return false;  
     symbols[record->name] = record;
     return true;
 }
@@ -83,7 +63,7 @@ Record* Scope::lookupLocal(const string& id) const {
 }
 
 Record* Scope::lookup(const string& id) const {
-    // Search current scope first, then walk up the tree
+    // Current scope then search tree
     Record* rec = lookupLocal(id);
     if (rec)
         return rec;
@@ -92,23 +72,16 @@ Record* Scope::lookup(const string& id) const {
     return nullptr;
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-//  SymbolTable  –  construction / destruction
-// ═══════════════════════════════════════════════════════════════════════
 
 SymbolTable::SymbolTable() {
-    // Create the root PROGRAM scope automatically
     root    = new Scope("Program", ScopeType::PROGRAM, 0, nullptr);
     current = root;
 }
 
 SymbolTable::~SymbolTable() {
-    delete root;   // cascades through child scopes
+    delete root;  
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-//  Scope management
-// ═══════════════════════════════════════════════════════════════════════
 
 void SymbolTable::enterScope(const string& name, ScopeType type) {
     Scope* child = new Scope(name, type, current->level + 1, current);
@@ -121,10 +94,6 @@ void SymbolTable::leaveScope() {
         current = current->parent;
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-//  Symbol operations
-// ═══════════════════════════════════════════════════════════════════════
-
 bool SymbolTable::insert(Record* record) {
     return current->insert(record);
 }
@@ -136,10 +105,6 @@ Record* SymbolTable::lookup(const string& name) const {
 Record* SymbolTable::lookupLocal(const string& name) const {
     return current->lookupLocal(name);
 }
-
-// ═══════════════════════════════════════════════════════════════════════
-//  Text visualisation
-// ═══════════════════════════════════════════════════════════════════════
 
 Scope* SymbolTable::lookupClassScope(const string& className) const {
     for (Scope* child : root->children) {
@@ -181,12 +146,10 @@ void SymbolTable::printTable() const {
 void SymbolTable::printScope(const Scope* scope, int indent) const {
     string pad(indent * 2, ' ');
 
-    // Scope header
     cout << pad << "┌── Scope: " << scope->name
          << "  [" << scopeTypeToString(scope->scopeType) << "]"
          << "  (level " << scope->level << ")\n";
 
-    // Symbols in this scope
     if (scope->symbols.empty()) {
         cout << pad << "│   (no symbols)\n";
     } else {
@@ -195,17 +158,12 @@ void SymbolTable::printScope(const Scope* scope, int indent) const {
         }
     }
 
-    // Recurse into children
     for (const Scope* child : scope->children) {
         printScope(child, indent + 1);
     }
 
     cout << pad << "└──\n";
 }
-
-// ═══════════════════════════════════════════════════════════════════════
-//  Graphviz DOT generation
-// ═══════════════════════════════════════════════════════════════════════
 
 void SymbolTable::generateDot(const string& filename) const {
     ofstream out(filename);
@@ -233,15 +191,12 @@ void SymbolTable::generateDotContent(const Scope* scope, int& nodeId,
                                      ostream& out) const {
     int myId = nodeId++;
 
-    // Build the label: scope header + one row per symbol
     ostringstream label;
     label << "{" << scopeTypeToString(scope->scopeType)
           << ": " << scope->name;
 
     for (const auto& entry : scope->symbols) {
-        // Escape special dot characters
         string desc = entry.second->toString();
-        // Replace characters that break DOT labels
         for (auto& c : desc) {
             if (c == '<' || c == '>' || c == '{' || c == '}')
                 c = ' ';
@@ -252,9 +207,8 @@ void SymbolTable::generateDotContent(const Scope* scope, int& nodeId,
 
     out << "  n" << myId << " [label=\"" << label.str() << "\"];\n";
 
-    // Recurse children and draw edges
     for (const Scope* child : scope->children) {
-        int childId = nodeId;   // will be assigned inside the recursive call
+        int childId = nodeId;  
         generateDotContent(child, nodeId, out);
         out << "  n" << myId << " -> n" << childId << ";\n";
     }
