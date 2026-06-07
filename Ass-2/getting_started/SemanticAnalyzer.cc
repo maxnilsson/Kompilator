@@ -1,9 +1,6 @@
 #include "SemanticAnalyzer.h"
 
-// ═══════════════════════════════════════════════════════════════════════
-//  Public entry point
-// ═══════════════════════════════════════════════════════════════════════
-
+//public
 int SemanticAnalyzer::analyze(Node* root) {
     if (!root) return 0;
     st.resetToRoot();
@@ -12,11 +9,8 @@ int SemanticAnalyzer::analyze(Node* root) {
     return errors;
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-//  Error reporting
-// ═══════════════════════════════════════════════════════════════════════
 
-void SemanticAnalyzer::reportError(int lineno, const string& msg) {
+void SemanticAnalyzer::reportError(int lineno, const string& msg) { // error
     string full = "@error at line " + to_string(lineno) + ". Semantic error: " + msg;
     errorMessages.push_back(full);
     cerr << full << endl;
@@ -31,9 +25,6 @@ Scope* SemanticAnalyzer::nextChildScope() {
     return nullptr;
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-//  Type helpers
-// ═══════════════════════════════════════════════════════════════════════
 
 bool SemanticAnalyzer::isPrimitive(const string& t) const {
     return t == "int" || t == "float" || t == "boolean";
@@ -83,9 +74,6 @@ bool SemanticAnalyzer::isVarDecl(const string& nodeType) const {
         || nodeType == "VolatileVarDecl" || nodeType == "VolatileVarDeclInit";
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-//  Method lookup helpers
-// ═══════════════════════════════════════════════════════════════════════
 
 MethodRecord* SemanticAnalyzer::lookupMethodInClass(const string& className,
                                                      const string& methodName) {
@@ -112,18 +100,15 @@ bool SemanticAnalyzer::containsReturn(Node* node) const {
     return false;
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-//  Program / Class / Method traversal
-// ═══════════════════════════════════════════════════════════════════════
 
 void SemanticAnalyzer::analyzeProgram(Node* node) {
-    // We are in root (PROGRAM) scope – mirrors STBuilder's scope walk
+    // We are in root - PROGRAM scope
     int classChildIdx = 0;
     int mainChildIdx = 0;
 
     for (auto child : node->children) {
         if (child->type == "Globals") {
-            // Check global var declarations
+            // Checking global var declarations
             for (auto gvar : child->children) {
                 if (isVarDecl(gvar->type))
                     analyzeVarDecl(gvar);
@@ -144,10 +129,9 @@ void SemanticAnalyzer::analyzeProgram(Node* node) {
 void SemanticAnalyzer::analyzeClass(Node* node) {
     const string& className = node->value;
 
-    // Enter the class scope – use next child scope (mirrors STBuilder order)
     Scope* classScope = nextChildScope();
     if (!classScope || classScope->name != className) {
-        // Fallback: try looking up by name
+        // tryinfg looking up by name
         classScope = st.lookupClassScope(className);
     }
     if (!classScope) return;
@@ -165,14 +149,13 @@ void SemanticAnalyzer::analyzeClass(Node* node) {
 
 void SemanticAnalyzer::analyzeMethod(Node* node) {
     const string& methodName = node->value;
-
-    // Get the next child scope (METHOD scope for this method)
+    //next child scope
     Scope* parentScope = st.getCurrentScope();
     Scope* methodScope = nextChildScope();
     if (!methodScope) return;
     st.setCurrentScope(methodScope);
 
-    // Parse children to find return type and block
+    // Parse children 
     Node* returnTypeNode = nullptr;
     Node* blockNode = nullptr;
     auto it = node->children.begin();
@@ -223,16 +206,12 @@ void SemanticAnalyzer::analyzeMain(Node* node) {
     st.setCurrentScope(parentScope);
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-//  Block & Statement analysis
-// ═══════════════════════════════════════════════════════════════════════
 
 void SemanticAnalyzer::analyzeBlock(Node* node, bool isMethodBody,
                                      const string& returnType) {
     Scope* parentScope = st.getCurrentScope();
 
-    if (!isMethodBody) {
-        // Get the next child scope (BLOCK scope)
+    if (!isMethodBody) { 
         Scope* blockScope = nextChildScope();
         if (blockScope)
             st.setCurrentScope(blockScope);
@@ -243,7 +222,7 @@ void SemanticAnalyzer::analyzeBlock(Node* node, bool isMethodBody,
         if (hasReturn) {
             reportError(child->lineno,
                 "Unreachable statement after return");
-            break;  // report once
+            break;  
         }
         analyzeStatement(child, returnType, hasReturn);
     }
@@ -257,19 +236,16 @@ void SemanticAnalyzer::analyzeStatement(Node* node, const string& returnType,
     if (!node) return;
     const string& t = node->type;
 
-    // ── Variable declaration ─────────────────────────────────────────
     if (isVarDecl(t)) {
         analyzeVarDecl(node);
         return;
     }
 
-    // ── Nested block ─────────────────────────────────────────────────
     if (t == "Block") {
         analyzeBlock(node, false, returnType);
         return;
     }
 
-    // ── Assignment: expr := expr ─────────────────────────────────────
     if (t == "Assign") {
         auto it = node->children.begin();
         Node* lhs = *it; ++it;
@@ -285,7 +261,6 @@ void SemanticAnalyzer::analyzeStatement(Node* node, const string& returnType,
         return;
     }
 
-    // ── If statement ─────────────────────────────────────────────────
     if (t == "If") {
         auto it = node->children.begin();
         Node* condition = *it; ++it;
@@ -296,13 +271,13 @@ void SemanticAnalyzer::analyzeStatement(Node* node, const string& returnType,
                 "If condition must be boolean, got " + condType);
         }
 
-        // then-branch
+        // then
         if (it != node->children.end()) {
             bool branchReturn = false;
             analyzeStatement(*it, returnType, branchReturn);
             ++it;
         }
-        // else-branch
+        // else
         if (it != node->children.end()) {
             Node* elseNode = *it;
             if (elseNode->type == "Else" && !elseNode->children.empty()) {
@@ -313,14 +288,13 @@ void SemanticAnalyzer::analyzeStatement(Node* node, const string& returnType,
         return;
     }
 
-    // ── For loop ─────────────────────────────────────────────────────
     if (t == "For") {
-        // Enter the for's BLOCK scope
+        // Enter the for BLOCK scope
         Scope* parentScope = st.getCurrentScope();
         Scope* forScope = nextChildScope();
         if (forScope) st.setCurrentScope(forScope);
 
-        // Process children: the last child is the body, others are init/cond/update
+        // Process children the last child is the body, others is init/cond/update
         auto children = node->children;
         for (size_t i = 0; i < children.size(); ++i) {
             auto it2 = children.begin();
@@ -348,7 +322,7 @@ void SemanticAnalyzer::analyzeStatement(Node* node, const string& returnType,
                 if (i < children.size() - 1) {
                     // This is likely the condition
                     string condType = analyzeExpr(child);
-                    // For-loop condition should be boolean (if provided)
+                    // For-loop condition should be boolean if exists
                     if (condType != "error" && condType != "boolean") {
                         reportError(child->lineno,
                             "For-loop condition must be boolean, got " + condType);
@@ -365,21 +339,18 @@ void SemanticAnalyzer::analyzeStatement(Node* node, const string& returnType,
         return;
     }
 
-    // ── Print statement ──────────────────────────────────────────────
     if (t == "Print") {
         if (!node->children.empty())
             analyzeExpr(node->children.front());
         return;
     }
-
-    // ── Read statement ───────────────────────────────────────────────
+    
     if (t == "Read") {
         if (!node->children.empty())
             analyzeExpr(node->children.front());
         return;
     }
 
-    // ── Return statement ─────────────────────────────────────────────
     if (t == "Return") {
         hasReturn = true;
         if (!node->children.empty()) {
@@ -392,28 +363,20 @@ void SemanticAnalyzer::analyzeStatement(Node* node, const string& returnType,
         return;
     }
 
-    // ── Break / Continue ─────────────────────────────────────────────
     if (t == "Break" || t == "Continue") {
         return;
     }
 
-    // ── Expression statement ─────────────────────────────────────────
     if (t == "ExprStmt") {
         if (!node->children.empty())
             analyzeExpr(node->children.front());
         return;
     }
-
-    // ── Fallback: recurse ────────────────────────────────────────────
     for (auto child : node->children) {
         bool dummy = false;
         analyzeStatement(child, returnType, dummy);
     }
 }
-
-// ═══════════════════════════════════════════════════════════════════════
-//  Variable declaration analysis (type validity + initializer type)
-// ═══════════════════════════════════════════════════════════════════════
 
 void SemanticAnalyzer::analyzeVarDecl(Node* node) {
     const string& varName = node->value;
@@ -439,21 +402,15 @@ void SemanticAnalyzer::analyzeVarDecl(Node* node) {
     }
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-//  Expression type inference
-// ═══════════════════════════════════════════════════════════════════════
-
 string SemanticAnalyzer::analyzeExpr(Node* node) {
     if (!node) return "error";
 
     const string& t = node->type;
 
-    // ── Literals ─────────────────────────────────────────────────────
     if (t == "Int")   return "int";
     if (t == "Float") return "float";
     if (t == "True" || t == "False") return "boolean";
 
-    // ── Identifier ───────────────────────────────────────────────────
     if (t == "ID") {
         Record* rec = st.getCurrentScope()->lookup(node->value);
         if (!rec) {
@@ -468,7 +425,6 @@ string SemanticAnalyzer::analyzeExpr(Node* node) {
         return rec->type;
     }
 
-    // ── Not (!expr) ──────────────────────────────────────────────────
     if (t == "Not") {
         string operandType = analyzeExpr(node->children.front());
         if (operandType != "error" && operandType != "boolean") {
@@ -478,7 +434,6 @@ string SemanticAnalyzer::analyzeExpr(Node* node) {
         return "boolean";
     }
 
-    // ── Arithmetic operators: +, -, *, /, ^ ──────────────────────────
     if (t == "Add" || t == "Sub" || t == "Mul" || t == "Div" || t == "Pow") {
         auto it = node->children.begin();
         string leftType = analyzeExpr(*it); ++it;
@@ -494,13 +449,12 @@ string SemanticAnalyzer::analyzeExpr(Node* node) {
             return "error";
         }
 
-        // float promotion
+        // float 
         if (leftType == "float" || rightType == "float")
             return "float";
         return "int";
     }
 
-    // ── Comparison operators: <, >, <=, >= ───────────────────────────
     if (t == "LessThan" || t == "GreaterThan" ||
         t == "LessEqual" || t == "GreaterEqual") {
         auto it = node->children.begin();
@@ -518,7 +472,6 @@ string SemanticAnalyzer::analyzeExpr(Node* node) {
         return "boolean";
     }
 
-    // ── Equality operators: =, != ────────────────────────────────────
     if (t == "Equal" || t == "NotEqual") {
         auto it = node->children.begin();
         string leftType = analyzeExpr(*it); ++it;
@@ -535,7 +488,6 @@ string SemanticAnalyzer::analyzeExpr(Node* node) {
         return "boolean";
     }
 
-    // ── Logical operators: &, | ──────────────────────────────────────
     if (t == "And" || t == "Or") {
         auto it = node->children.begin();
         string leftType = analyzeExpr(*it); ++it;
@@ -553,7 +505,6 @@ string SemanticAnalyzer::analyzeExpr(Node* node) {
         return "boolean";
     }
 
-    // ── Array access: expr[expr] ─────────────────────────────────────
     if (t == "ArrayAccess") {
         auto it = node->children.begin();
         string arrType = analyzeExpr(*it); ++it;
@@ -575,7 +526,6 @@ string SemanticAnalyzer::analyzeExpr(Node* node) {
         return "error";
     }
 
-    // ── Array length: expr.length ────────────────────────────────────
     if (t == "ArrayLength") {
         string arrType = analyzeExpr(node->children.front());
         if (arrType != "error" && !isArrayType(arrType)) {
@@ -585,13 +535,12 @@ string SemanticAnalyzer::analyzeExpr(Node* node) {
         return "int";
     }
 
-    // ── Array initialiser: baseType[ expr, expr, ... ] ───────────────
     if (t == "ArrayInit") {
         auto it = node->children.begin();
         Node* baseTypeNode = *it; ++it;
         string baseType = extractType(baseTypeNode);
 
-        // Check each element expression
+        // Checking each element expression
         if (it != node->children.end()) {
             Node* exprList = *it;
             for (auto elem : exprList->children) {
@@ -605,32 +554,27 @@ string SemanticAnalyzer::analyzeExpr(Node* node) {
         return baseType + "[]";
     }
 
-    // ── Self method call: ID( args ) ─────────────────────────────────
     if (t == "MethodCall") {
         const string& methodName = node->value;
 
-        // Check if this is a constructor call (class name used as method)
+        // Check if this is a constructor call, class name used as method
         Record* classRec = st.getRootScope()->lookupLocal(methodName);
         if (classRec && classRec->recordType == RecordType::CLASS) {
-            // Constructor call – no arguments expected in basic C+-
-            // but we still analyze the args
             for (auto child : node->children) {
                 if (child->type == "Args") {
                     for (auto arg : child->children)
                         analyzeExpr(arg);
                 }
             }
-            return methodName;  // returns the class type
+            return methodName;  // returns class type
         }
 
-        // Otherwise, look up method in current class
         string className = getCurrentClassName();
         MethodRecord* mr = nullptr;
         if (!className.empty())
             mr = lookupMethodInClass(className, methodName);
 
         if (!mr) {
-            // Try looking up in any accessible scope
             Record* rec = st.getCurrentScope()->lookup(methodName);
             if (rec && rec->recordType == RecordType::METHOD) {
                 mr = static_cast<MethodRecord*>(rec);
@@ -640,7 +584,6 @@ string SemanticAnalyzer::analyzeExpr(Node* node) {
         if (!mr) {
             reportError(node->lineno,
                 "Undeclared method '" + methodName + "'");
-            // Still analyze args
             for (auto child : node->children)
                 if (child->type == "Args")
                     for (auto arg : child->children)
@@ -648,7 +591,7 @@ string SemanticAnalyzer::analyzeExpr(Node* node) {
             return "error";
         }
 
-        // Check arguments
+        // arguments
         vector<string> argTypes;
         for (auto child : node->children) {
             if (child->type == "Args") {
@@ -676,7 +619,6 @@ string SemanticAnalyzer::analyzeExpr(Node* node) {
         return mr->type;
     }
 
-    // ── Object method call: expr.ID( args ) ──────────────────────────
     if (t == "ObjectMethodCall") {
         const string& methodName = node->value;
 
@@ -685,7 +627,6 @@ string SemanticAnalyzer::analyzeExpr(Node* node) {
 
         string objType = analyzeExpr(objExpr);
 
-        // Analyze arguments regardless
         vector<string> argTypes;
         if (it != node->children.end() && (*it)->type == "Args") {
             for (auto arg : (*it)->children)
@@ -695,14 +636,13 @@ string SemanticAnalyzer::analyzeExpr(Node* node) {
         if (objType == "error")
             return "error";
 
-        // Object must be a class type (not primitive, not array)
+        // Object must be a class type not primitive, not array
         if (isPrimitive(objType) || isArrayType(objType)) {
             reportError(node->lineno,
                 "Cannot call method '" + methodName + "' on type " + objType);
             return "error";
         }
 
-        // Look up method in the class
         MethodRecord* mr = lookupMethodInClass(objType, methodName);
         if (!mr) {
             reportError(node->lineno,
@@ -710,7 +650,6 @@ string SemanticAnalyzer::analyzeExpr(Node* node) {
             return "error";
         }
 
-        // Check argument count and types
         if (argTypes.size() != mr->parameters.size()) {
             reportError(node->lineno,
                 "Method '" + objType + "." + methodName + "' expects "
@@ -731,12 +670,9 @@ string SemanticAnalyzer::analyzeExpr(Node* node) {
         return mr->type;
     }
 
-    // ── Parenthesised expression – should have been unwrapped by parser
-    //    but handle just in case ──────────────────────────────────────
     if (t == "Paren" && !node->children.empty()) {
         return analyzeExpr(node->children.front());
     }
 
-    // ── Fallback: unknown expression node ────────────────────────────
     return "error";
 }
