@@ -67,7 +67,7 @@ int main(int argc, char **argv)
 				// root->print_tree();
 				root->generate_tree();
 
-				// ── Build Symbol Table ──────────────────────────
+				//Symbol Table 
 				SymbolTable symTable;
 				STBuilder builder(symTable);
 				int semanticErrors = builder.build(root);
@@ -75,7 +75,7 @@ int main(int argc, char **argv)
 				symTable.printTable();
 				symTable.generateDot();
 
-				// ── Semantic Analysis ───────────────────────────
+				// Semantic Analysis 
 				SemanticAnalyzer analyzer(symTable);
 				semanticErrors += analyzer.analyze(root);
 
