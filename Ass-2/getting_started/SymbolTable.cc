@@ -40,7 +40,7 @@ string VariableRecord::toString() const {
 }
 
 Scope::~Scope() {
-
+    // 
     for (Scope* child : children)
         delete child;
 
@@ -63,7 +63,7 @@ Record* Scope::lookupLocal(const string& id) const {
 }
 
 Record* Scope::lookup(const string& id) const {
-    // Current scope then search tree
+    // Current scope then search tree recursive
     Record* rec = lookupLocal(id);
     if (rec)
         return rec;

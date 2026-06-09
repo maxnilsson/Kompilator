@@ -17,7 +17,7 @@ void SemanticAnalyzer::reportError(int lineno, const string& msg) { // error
     ++errors;
 }
 
-Scope* SemanticAnalyzer::nextChildScope() {
+Scope* SemanticAnalyzer::nextChildScope() { //existing child scopes
     Scope* cur = st.getCurrentScope();
     size_t& idx = scopeChildIdx[cur];
     if (idx < cur->children.size())
